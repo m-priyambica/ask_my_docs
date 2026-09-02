@@ -376,15 +376,10 @@ so they vanish with the server and a second process wouldn't see them — a
 deliberate trade that keeps the storage layer out of the way while you learn the
 retrieval pipeline. To go multi-user, move `RETRIEVERS` out of the process and
 give Chroma a `persist_directory`.
+---
+## Project Screenshots
 
-## Model pins
+![Screenshot 1](indexing img.png)
 
-Gemini's lineup churns. `gemini-2.5-flash` now 404s for new users, and the
-rolling `gemini-flash-latest` alias resolves to the newest model, which carries
-the *tightest* free quota (measured: 20 requests/day). The explicit lite pin in
-`rag/src/llm.py` buys free-tier headroom.
+![Screenshot 2](answer img.png)
 
-See the comment at the top of `requirements.txt` before loosening any pin.
-
-
-See the comment at the top of `requirements.txt` before loosening any pin.
