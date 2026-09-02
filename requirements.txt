@@ -1,0 +1,28 @@
+﻿# Pinned deliberately. LangChain 1.x moved the retrievers this app is built on
+# (EnsembleRetriever, ContextualCompressionRetriever, CrossEncoderReranker) out
+# of `langchain` into `langchain-classic`, so an unpinned install breaks on
+# import. This set is verified to work together.
+langchain>=0.3.30,<1
+langchain-community>=0.3.31,<0.4
+langchain-google-genai>=2.1.12,<3
+langchain-chroma>=0.2.6,<1
+langchain-text-splitters>=0.3.11,<1
+chromadb
+rank_bm25
+sentence-transformers
+tiktoken
+pypdf
+python-dotenv
+
+# Web layer: server-rendered HTML, no JavaScript framework.
+# Jinja2 renders frontend/templates/ as individual macros rather than whole
+# pages, which is what lets api.py stream the pipeline flow fragment by
+# fragment. markupsafe comes with it and does the escaping.
+fastapi
+uvicorn
+python-multipart
+jinja2
+
+# The model answers in Markdown; this turns it into HTML so the page shows
+# real headings, bullets and tables instead of literal ** and * characters.
+markdown

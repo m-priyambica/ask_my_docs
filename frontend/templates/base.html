@@ -1,0 +1,25 @@
+{# Macros start content on the same line as the tag: `-%}` would strip the leading indent. #}
+{% macro page_open(subtitle="") %}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask My Docs</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="/">Ask My Docs</a>
+    <span class="tag">Hybrid RAG</span>
+  </header>
+{# Padding below clears the ~1KB browsers buffer before first paint, so the live flow is not stalled. #}
+<!-- {{ "." * 1200 }} -->
+  {% if subtitle %}<p class="run-title">{{ subtitle }}</p>{% endif %}
+{% endmacro %}
+
+{% macro page_close() %}  <p class="hint"><a href="/">Upload a different document</a></p>
+</div>
+</body>
+</html>
+{% endmacro %}

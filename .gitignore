@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+# Chroma writes here only if a persist_directory is ever added; see rag/src/vector_store.py
+chroma/
+goldens.py
+sample.md
