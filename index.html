@@ -1,114 +1,66 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ask My Docs</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#f6f6fa;color:#222;font:15px system-ui}
-main{max-width:780px;margin:auto;padding:40px 18px}h1{color:#705cff;margin:0}
-.sub{color:#777}.card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:18px;margin:16px 0}
+*{box-sizing:border-box}body{margin:0;background:#f5f5fa;color:#222;font:15px system-ui}
+main{max-width:780px;margin:auto;padding:40px 18px}h1{color:#705cff;margin:0}.sub{color:#777}
+.card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:18px;margin:16px 0}
 h2{font-size:12px;color:#777;text-transform:uppercase;margin:0 0 12px}
-.drop{display:block;text-align:center;padding:28px;border:2px dashed #ddd;border-radius:10px;
-background:#f1efff;cursor:pointer}.drop b{color:#705cff}#file{display:none}
-form{display:flex;gap:8px}input{flex:1;padding:11px;border:1px solid #ddd;border-radius:8px;font:inherit}
-button{padding:11px 18px;border:0;border-radius:8px;background:#705cff;color:#fff;font-weight:600;cursor:pointer}
-button:disabled{opacity:.5}.spin{display:inline-block;width:12px;height:12px;border:2px solid #705cff;
-border-top-color:transparent;border-radius:50%;animation:s .7s linear infinite}
-.src{border-left:3px solid #705cff;padding-left:10px;margin:8px 0;color:#666;white-space:pre-wrap}
+.drop{display:block;text-align:center;padding:28px;border:2px dashed #ddd;border-radius:10px;background:#f1efff;cursor:pointer}
+.drop b{color:#705cff}#file{display:none}form{display:flex;gap:8px}
+input{flex:1;padding:11px;border:1px solid #ddd;border-radius:8px;font:inherit}
+button{padding:11px 18px;border:0;border-radius:8px;background:#705cff;color:#fff;font-weight:bold}
+button:disabled{opacity:.5}.src{border-left:3px solid #705cff;padding-left:10px;margin:8px 0;color:#666;white-space:pre-wrap}
 .note{background:#f1efff;padding:9px;border-radius:7px;color:#876800;margin:8px 0}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid #705cff;border-top:0;border-radius:50%;animation:s .7s linear infinite}
 [hidden]{display:none!important}@keyframes s{to{transform:rotate(360deg)}}
 </style>
 </head>
 
-<body>
-<main>
+<body><main>
 <h1>Ask My Docs</h1>
-<p class="sub">Upload a document and ask questions about it with grounded answers and citations.</p>
+<p class="sub">Upload a document and ask questions with grounded answers and citations.</p>
 
-<div class="card">
-<h2>① Choose a document</h2>
-<label class="drop" for="file">
-<b>Choose a file</b> or drag it here<br><small>PDF, TXT or MD</small>
-</label>
-<input id="file" type="file" accept=".pdf,.txt,.md">
-</div>
+<div class="card"><h2>① Choose a document</h2>
+<label class="drop" for="file"><b>Choose a file</b> or drag it here<br><small>PDF, TXT or MD</small></label>
+<input id="file" type="file" accept=".pdf,.txt,.md"></div>
 
-<div class="card" id="flow" hidden>
-<h2 id="ft">Working</h2><ul id="st"></ul>
-</div>
+<div class="card" id="flow" hidden><h2 id="title">Working</h2><ul id="stages"></ul></div>
 
-<div class="card" id="step2" hidden>
-<h2>② Ask a question</h2>
-<form id="ask">
-<input id="q" placeholder="What does this document say about..." required>
-<button id="go">Ask</button>
-</form>
-</div>
+<div class="card" id="step2" hidden><h2>② Ask a question</h2>
+<form id="ask"><input id="q" placeholder="What does this document say about..." required><button id="go">Ask</button></form></div>
 
 <div id="out"></div>
 </main>
 
 <script>
-const $=x=>document.getElementById(x);let doc;
+const $=id=>document.getElementById(id);let doc;
 
-function loading(title,msg){
- $("flow").hidden=false;$("ft").textContent=title;
- $("st").innerHTML=`<li><span class="spin"></span>${msg}</li>`;
-}
-
-async function post(url,opt){
- const r=await fetch(url,opt),d=await r.json();
- if(!r.ok||d.error)throw Error(d.error||"Request failed");
- return d;
-}
+function load(t,m){$("flow").hidden=0;$("title").textContent=t;$("stages").innerHTML=`<li><i class=spin></i>${m}</li>`}
+async function api(u,o){let r=await fetch(u,o),d=await r.json();if(!r.ok||d.error)throw Error(d.error||"Request failed");return d}
+function stages(a){$("stages").innerHTML=a.map(x=>`<li>✓ ${x.label}<br><small>${x.detail||""}</small></li>`).join("")}
+function err(e){$("flow").hidden=1;$("out").innerHTML=`<div class=card><h2>Error</h2>${e}</div>`}
 
 $("file").onchange=async e=>{
- const f=e.target.files[0];if(!f)return;
- $("out").innerHTML="";$("step2").hidden=true;
- loading("Indexing "+f.name,"Chunking, embedding and building indexes...");
- try{
-  const d=await post("/upload?name="+encodeURIComponent(f.name),{method:"POST",body:f});
-  doc=d.doc_id;
-  $("ft").textContent=`Indexed ${d.filename} — ${d.pages} page(s)`;
-  $("st").innerHTML=d.stages.map(s=>`<li>✓ ${s.label}<br><small>${s.detail||""}</small></li>`).join("");
-  $("step2").hidden=false;$("q").focus();
- }catch(e){error(e.message)}
+ let f=e.target.files[0];if(!f)return;$("out").innerHTML="";$("step2").hidden=1;
+ load("Indexing "+f.name,"Chunking, embedding and building indexes...");
+ try{let d=await api("/upload?name="+encodeURIComponent(f.name),{method:"POST",body:f});
+ doc=d.doc_id;$("title").textContent=`Indexed ${d.filename} — ${d.pages} page(s)`;stages(d.stages);
+ $("step2").hidden=0;$("q").focus()}catch(e){err(e.message)}
 };
 
 $("ask").onsubmit=async e=>{
- e.preventDefault();
- const question=$("q").value.trim();if(!question)return;
- $("go").disabled=true;$("out").innerHTML="";
- loading(question,"Hybrid search, reranking, then a grounded answer...");
- try{
-  const d=await post("/ask",{
-   method:"POST",
-   headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({doc_id:doc,question})
-  });
-
-  $("ft").textContent=question;
-  $("st").innerHTML=d.stages.map(s=>`<li>✓ ${s.label}<br><small>${s.detail||""}</small></li>`).join("");
-
-  $("out").innerHTML=`
-  <div class="card">
-   <h2>Answer</h2>
-   <div>${d.answer}</div>
-   ${d.warnings.map(w=>`<div class="note">${w}</div>`).join("")}
-   <details>
-    <summary>${d.sources.length} retrieved chunk(s)</summary>
-    ${d.sources.map((s,i)=>`<div class="src"><b>[${i+1}]</b> ${s}</div>`).join("")}
-   </details>
-  </div>`;
- }catch(e){error(e.message)}
- $("go").disabled=false;
+ e.preventDefault();let q=$("q").value.trim();if(!q)return;
+ $("go").disabled=1;$("out").innerHTML="";load(q,"Hybrid search, reranking, then a grounded answer...");
+ try{let d=await api("/ask",{method:"POST",headers:{"Content-Type":"application/json"},
+ body:JSON.stringify({doc_id:doc,question:q})});stages(d.stages);
+ $("out").innerHTML=`<div class=card><h2>Answer</h2>${d.answer}
+ ${d.warnings.map(x=>`<div class=note>${x}</div>`).join("")}
+ <details><summary>${d.sources.length} retrieved chunk(s)</summary>
+ ${d.sources.map((x,i)=>`<div class=src><b>[${i+1}]</b> ${x}</div>`).join("")}</details></div>`
+ }catch(e){err(e.message)}$("go").disabled=0
 };
-
-function error(msg){
- $("flow").hidden=true;
- $("out").innerHTML=`<div class="card"><h2>Error</h2><div>${msg}</div></div>`;
-}
 </script>
-</body>
-</html>
+</body></html>
