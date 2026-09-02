@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask My Docs</title>
+<style>
+:root{
+  --bg:#f4f4f8; --card:#fff; --ink:#1a1a22; --muted:#6b6b7b; --line:#e4e4ee;
+  --a1:#6d5efc; --a2:#e94f8a; --ok:#12a06a; --warn:#b8860b; --err:#d64545;
+  --soft:#f0eeff;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#12121a; --card:#1c1c26; --ink:#f0f0f5; --muted:#9a9ab0; --line:#2e2e3c;
+    --a1:#9b8dff; --a2:#ff7fae; --ok:#3ddc9a; --warn:#e8c060; --err:#ff7a7a;
+    --soft:#232134;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:780px;margin:0 auto;padding:2.5rem 1.1rem 5rem}
+
+h1{font-size:1.9rem;margin:0;letter-spacing:-.02em;
+  background:linear-gradient(120deg,var(--a1),var(--a2));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--muted);margin:.35rem 0 1.8rem}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:1.1rem 1.3rem;margin-bottom:1.1rem}
+.card h2{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--muted);margin:0 0 .9rem}
+.num{display:inline-grid;place-items:center;width:19px;height:19px;border-radius:6px;
+  background:linear-gradient(120deg,var(--a1),var(--a2));color:#fff;font-size:.62rem;
+  margin-right:.45rem;vertical-align:-3px}
+
+.drop{display:block;border:2px dashed var(--line);border-radius:11px;padding:1.7rem;
+  text-align:center;cursor:pointer;background:var(--soft);transition:.15s}
+.drop:hover{border-color:var(--a1)}
+.drop b{color:var(--a1)}
+.drop span{display:block;color:var(--muted);font-size:.85rem;margin-top:.25rem}
+#file{display:none}
+
+form{display:flex;gap:.55rem}
+input[type=text]{flex:1;font:inherit;padding:.62rem .85rem;color:var(--ink);
+  background:var(--bg);border:1px solid var(--line);border-radius:9px}
+input[type=text]:focus{outline:2px solid var(--a1);outline-offset:-1px}
+button{font:inherit;font-weight:600;padding:.62rem 1.3rem;border:0;border-radius:9px;
+  color:#fff;background:linear-gradient(120deg,var(--a1),var(--a2));cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+
+.stages{list-style:none;margin:0;padding:0}
+.stages li{padding:.3rem 0;font-size:.9rem}
+.stages li::before{content:"\2713";color:var(--ok);font-weight:700;margin-right:.55rem}
+.stages .detail{color:var(--muted);font-size:.83rem;margin-left:1.4rem;display:block}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--a1);
+  border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;
+  margin-right:.5rem;vertical-align:-1px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.answer h1,.answer h2,.answer h3{font-size:.72rem;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--a1);margin:1.3rem 0 .5rem;
+  background:none;-webkit-text-fill-color:var(--a1)}
+.answer p{margin:0 0 .7rem}
+.answer ul,.answer ol{margin:0 0 .7rem;padding-left:1.2rem}
+.answer li{margin:.25rem 0}
+.answer li::marker{color:var(--a2)}
+.answer > :first-child{margin-top:0}
+.answer table{border-collapse:collapse;display:block;overflow-x:auto;margin:0 0 .8rem;
+  font-size:.9rem}
+.answer th,.answer td{border:1px solid var(--line);padding:.42rem .65rem;text-align:left}
+.answer th{background:var(--soft)}
+.answer code{background:var(--soft);border-radius:4px;padding:.05rem .3rem;font-size:.87rem}
+.cite{color:var(--a2);font-weight:700}
+
+.note{background:var(--soft);color:var(--warn);border-radius:8px;padding:.55rem .8rem;
+  margin:.7rem 0 0;font-size:.86rem}
+.fail{border-color:var(--err)}
+.fail p{color:var(--err);margin:0}
+details{margin-top:.9rem}
+summary{cursor:pointer;color:var(--muted);font-size:.85rem;font-weight:600}
+.src{border-left:3px solid var(--a1);padding:.35rem 0 .35rem .75rem;margin-top:.6rem;
+  color:var(--muted);font-size:.85rem;white-space:pre-wrap}
+.src b{color:var(--a2)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <h1>Ask My Docs</h1>
+  <p class="sub">Upload a document and ask questions about it. Every answer cites the
+    chunk it came from, and says so when the document doesn't cover your question.</p>
+
+  <div class="card">
+    <h2><span class="num">1</span>Choose a document</h2>
+    <label class="drop" for="file">
+      <b>Choose a file</b> or drag it here
+      <span>PDF, .txt or .md</span>
+    </label>
+    <input id="file" type="file" accept=".pdf,.txt,.md">
+  </div>
+
+  <div class="card" id="flow" hidden>
+    <h2 id="flow-title">Working</h2>
+    <ul class="stages" id="stages"></ul>
+  </div>
+
+  <div class="card" id="step2" hidden>
+    <h2><span class="num">2</span>Ask a question</h2>
+    <form id="ask">
+      <input type="text" id="q" placeholder="What does this document say about…?" autocomplete="off" required>
+      <button type="submit" id="go">Ask</button>
+    </form>
+  </div>
+
+  <div id="out"></div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let docId = null;
+
+function busy(title, note) {
+  $('flow').hidden = false;
+  $('flow-title').textContent = title;
+  $('stages').innerHTML = `<li><span class="spin"></span>${note}</li>`;
+}
+
+function showStages(stages) {
+  $('stages').innerHTML = stages.map(s =>
+    `<li>${s.label}<span class="detail">${s.detail}</span></li>`).join('');
+}
+
+function fail(message) {
+  $('out').innerHTML = `<div class="card fail"><h2>Something went wrong</h2><p>${message}</p></div>`;
+}
+
+$('file').addEventListener('change', async event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  $('out').innerHTML = '';
+  $('step2').hidden = true;
+  busy('Indexing ' + file.name, 'Chunking, embedding and building both indexes…');
+
+  const response = await fetch('/upload?name=' + encodeURIComponent(file.name),
+    { method: 'POST', body: file });
+  const data = await response.json();
+
+  if (data.error) { $('flow').hidden = true; return fail(data.error); }
+  docId = data.doc_id;
+  showStages(data.stages);
+  $('flow-title').textContent = `Indexed ${data.filename} — ${data.pages} page(s)`;
+  $('step2').hidden = false;
+  $('q').focus();
+});
+
+$('ask').addEventListener('submit', async event => {
+  event.preventDefault();
+  const question = $('q').value.trim();
+  if (!question) return;
+  $('go').disabled = true;
+  $('out').innerHTML = '';
+  busy(question, 'Hybrid search, reranking, then a grounded answer…');
+
+  const response = await fetch('/ask', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ doc_id: docId, question })
+  });
+  const data = await response.json();
+  $('go').disabled = false;
+
+  if (data.error) { $('flow').hidden = true; return fail(data.error); }
+  showStages(data.stages);
+  $('flow-title').textContent = question;
+
+  const notes = data.warnings.map(w => `<p class="note">${w}</p>`).join('');
+  const sources = data.sources.map((s, i) =>
+    `<div class="src"><b>[${i + 1}]</b> ${s.replace(/[<>&]/g, c =>
+      ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}</div>`).join('');
+  $('out').innerHTML = `<div class="card">
+    <h2>Answer</h2>
+    <div class="answer">${data.answer}</div>
+    ${notes}
+    <details><summary>${data.sources.length} retrieved chunk(s)</summary>${sources}</details>
+  </div>`;
+});
+</script>
+</body>
+</html>

@@ -1,13 +1,3 @@
----
-title: Ask My Docs
-emoji: 📄
-colorFrom: blue
-colorTo: purple
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # Ask My Docs
 
 Upload a PDF or text file and ask questions about it. Every answer cites the
@@ -22,8 +12,8 @@ of guessing.
 - **BGE embeddings** (`BAAI/bge-small-en-v1.5`, local) — no API key, no rate limit
 - **BGE reranker** (`BAAI/bge-reranker-base`, local) — narrows candidates before generation
 - **Google Gemini** (`gemini-3.5-flash-lite`) — the only hosted call, used for generation
-- **FastAPI + Jinja2** — server-rendered HTML. No JavaScript anywhere in the app.
 - **Python-Markdown** — renders the model's Markdown answer into real HTML
+- **`http.server`** — the standard library. No web framework, nothing to install.
 
 Retrieval runs entirely on your machine. Only the final answer needs the network.
 
@@ -31,16 +21,7 @@ Retrieval runs entirely on your machine. Only the final answer needs the network
 
 ```
 ask-my-docs/
-├── frontend/               the web UI — knows nothing about RAG
-│   ├── static/style.css
-│   ├── templates/          one Jinja2 macro per HTML fragment
-│   │   ├── base.html       page shell, streamed in two halves
-│   │   ├── upload.html     step 1 — choose a document
-│   │   ├── ask.html        step 2 — ask a question
-│   │   └── run.html        pipeline flow + result cards
-│   └── views.py            renders each macro as a plain string
-│
-├── rag/                    the pipeline — knows nothing about the web
+├── rag/                    the pipeline — this is the project
 │   ├── src/
 │   │   ├── document_loader.py   1. PDF/text -> Document objects
 │   │   ├── chunking.py          2. split into ~650-token chunks
@@ -51,19 +32,21 @@ ask-my-docs/
 │   │   └── rag_pipeline.py      the two operations, wired together
 │   └── evaluate.py         scores the pipeline; needs goldens.py + sample.md
 │
-└── api.py                  HTTP routes — the only seam between the two
+├── app.py                  the whole web layer: one server, two endpoints
+└── index.html              the whole UI: one page
 ```
 
-The two halves never import each other; `api.py` is the only module that
-imports both. Callers reach the pipeline through `rag.src.rag_pipeline`, which
-re-exports everything they need, so no route ever imports a stage directly.
+`rag/` knows nothing about HTTP and `app.py` knows nothing about retrievers
+beyond calling two functions. Callers reach the pipeline through
+`rag.src.rag_pipeline`, which re-exports everything they need, so nothing
+imports a stage directly.
 
 ## Running it
 
 ```
 pip install -r requirements.txt
 cp .env.example .env      # then put your real Gemini API key in .env
-uvicorn api:app --port 8000
+python app.py
 ```
 
 Open <http://localhost:8000>. Get a free Gemini API key at
@@ -71,19 +54,30 @@ Open <http://localhost:8000>. Get a free Gemini API key at
 
 The first run downloads the two BGE models (~1.2 GB total) and caches them.
 
-## How the UI works without JavaScript
+## How the web layer works
 
-The pipeline flow you see while a document indexes is a **streaming HTML
-response**: `api.py` writes each stage to the browser the moment it starts, and
-the browser renders it as it arrives. `rag_pipeline.py` reports its stages
-through an optional `progress` callback. There is no JavaScript, no polling,
-and no websocket — just HTML delivered in pieces, which browsers have always
-done.
+There isn't much of one, on purpose — the point of this project is the
+retrieval pipeline, not the plumbing around it.
 
-This is why `frontend/templates/` holds **macros rather than whole pages**.
-Each macro is one fragment, and `views.py` exposes each as a function returning
-a string, so `api.py` can emit them one at a time. Rendering a complete page at
-the end of the request would lose the live flow entirely.
+`app.py` subclasses `BaseHTTPRequestHandler` from the standard library and
+answers three things:
+
+| Route | Does |
+|---|---|
+| `GET /` | sends `index.html` |
+| `POST /upload?name=…` | indexes the raw bytes in the body, returns a `doc_id` |
+| `POST /ask` | takes `{doc_id, question}`, returns the answer as HTML |
+
+The browser sends the file as the raw request body rather than a multipart
+form, which is why no form-parsing library is needed. Both stages report their
+progress through `rag_pipeline`'s optional `progress` callback; `app.py`
+collects those into a list and returns them alongside the result, so the page
+can show which steps ran.
+
+The Markdown the model writes is converted to HTML in Python, in
+`render_answer()`. It escapes the text *before* converting it, because the
+answer quotes the document back — so HTML hidden inside a PDF can never reach
+the page as live markup.
 
 ## Measuring accuracy
 
@@ -133,24 +127,16 @@ its keep when it contains deliberately confusable pairs (26 *days* of one thing
 against 26 *weeks* of another) and questions the document genuinely doesn't
 answer, so that inventing a plausible answer scores as a failure.
 
-## Deploying to Hugging Face Spaces
+## Scope
 
-This app needs a host that runs Python, so it goes on a **Docker** Space. A
-Static Space serves files only — it cannot run `rag.py`.
+This runs locally, for one person at a time. Retrievers are held in a plain
+dict in process memory, so they vanish when you stop the server and a second
+process would not see them. That is a deliberate trade: it keeps the storage
+layer out of the way while you are learning the retrieval pipeline.
 
-1. Create a new Space, SDK = **Docker**.
-2. Push this folder to the Space's git repo. The frontmatter at the top of this
-   README is what tells Spaces to use Docker and to route to port 7860.
-3. In Settings → *Variables and secrets*, add `GEMINI_API_KEY`. Do not commit
-   `.env`.
-
-The `Dockerfile` bakes the two BGE models into the image so the first visitor
-isn't kept waiting on a 1.2 GB download. Expect a slow first build and a large
-image; builds after that reuse the dependency layer.
-
-It runs a single worker deliberately — retrievers are held in process memory, so
-a second worker wouldn't see a document indexed by the first. If you ever need
-more than one worker, move the retriever store out of the process first.
+To make it multi-user you would move `RETRIEVERS` out of the process and give
+Chroma a `persist_directory` — both are single-line changes, and everything
+else would stay as it is.
 
 ## Notes on the model pins
 

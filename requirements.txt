@@ -14,14 +14,8 @@ tiktoken
 pypdf
 python-dotenv
 
-# Web layer: server-rendered HTML, no JavaScript framework.
-# Jinja2 renders frontend/templates/ as individual macros rather than whole
-# pages, which is what lets api.py stream the pipeline flow fragment by
-# fragment. markupsafe comes with it and does the escaping.
-fastapi
-uvicorn
-python-multipart
-jinja2
+# Web layer: none. app.py serves index.html and two JSON endpoints using
+# http.server from the standard library, so there is no framework to install.
 
 # The model answers in Markdown; this turns it into HTML so the page shows
 # real headings, bullets and tables instead of literal ** and * characters.
