@@ -4,6 +4,7 @@ The whole web layer, on Python's standard library. It serves one HTML page and
 two JSON endpoints, and it is deliberately thin: all the interesting work lives
 in rag/, which knows nothing about HTTP.
 """
+import os
 import html
 import json
 import re
@@ -23,7 +24,7 @@ from rag.src.rag_pipeline import (
     load_document,
 )
 
-PORT = 8000
+PORT = int(os.getenv("PORT", 8000))
 PAGE = Path(__file__).parent / "index.html"
 
 RETRIEVERS: dict[str, object] = {}
