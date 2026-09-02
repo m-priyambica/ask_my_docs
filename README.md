@@ -376,10 +376,11 @@ so they vanish with the server and a second process wouldn't see them — a
 deliberate trade that keeps the storage layer out of the way while you learn the
 retrieval pipeline. To go multi-user, move `RETRIEVERS` out of the process and
 give Chroma a `persist_directory`.
+
+
 ---
 ## Project Screenshots
 
-![Screenshot 1](indexing img.png)
+![Screenshot 1](indexing%20img.png)
 
-![Screenshot 2](answer img.png)
-
+![Screenshot 2](answer%20img.png)
